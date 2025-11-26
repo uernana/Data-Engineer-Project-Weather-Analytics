@@ -20,6 +20,7 @@ Link data: https://openweathermap.org/api
 
 Data modeling: Normalized schema; optimized for ingestion and fast dashboard queries.
 
+```
 CREATE TABLE IF NOT EXISTS cities (
   city_id        INT PRIMARY KEY,  -- OpenWeatherMap city id
   city_name      TEXT NOT NULL,
@@ -29,6 +30,9 @@ CREATE TABLE IF NOT EXISTS cities (
   timezone       TEXT
 );
 
+```
+
+```
 CREATE TABLE IF NOT EXISTS current_weather (
   city_id        INT REFERENCES cities(city_id),
   dt             TIMESTAMPTZ NOT NULL,  -- API response time (dt)
@@ -49,7 +53,9 @@ CREATE TABLE IF NOT EXISTS current_weather (
   sunset         TIMESTAMPTZ
 );
 
+```
 
+```
 CREATE TABLE IF NOT EXISTS forecast_weather (
   city_id        INT REFERENCES cities(city_id),
   dt_txt         TIMESTAMPTZ NOT NULL,  -- forecast timestamp
@@ -69,6 +75,8 @@ CREATE TABLE IF NOT EXISTS forecast_weather (
   clouds_all     INT,
   pop            DOUBLE PRECISION,  -- probability of precipitation
 );
+
+```
 
 ## Ingestion design & scheduling
 

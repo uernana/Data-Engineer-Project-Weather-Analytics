@@ -1,12 +1,12 @@
 ## Architecture
 
-1. Data source: OpenWeatherMap (Current Weather + 5 day / 3 hour forecast). 
+1. Data source: OpenWeatherMap (Current Weather). 
 
 2. Ingestion layer (Python): small Python microservice (requests) called by Airflow tasks.
 
 3. Storage: PostgreSQL (single database). Tables: cities, current_weather, forecast_weather, plus audit / metadata / dwh_views.
 
-4. Orchestration: Airflow DAGs schedule pulls (e.g., current weather every 5–15 mins; forecast every 1–3 hours).
+4. Orchestration: Airflow DAGs schedule pulls (e.g., current weather every 1-2 hours.
 
 5. Transformations: SQL transforms in Postgres or Airflow-PostgresOperator: clean, enrich, aggregate, materialized views.
 
@@ -55,34 +55,9 @@ CREATE TABLE IF NOT EXISTS current_weather (
 
 ```
 
-```
-CREATE TABLE IF NOT EXISTS forecast_weather (
-  city_id        INT REFERENCES cities(city_id),
-  dt_txt         TIMESTAMPTZ NOT NULL,  -- forecast timestamp
-  dt             TIMESTAMPTZ NOT NULL,
-  weather_id     INT,
-  weather_main   TEXT,
-  description    TEXT,
-  temp           FLOAT,
-  feels_like     FLOAT,
-  temp_min       FLOAT,
-  temp_max       FLOAT,
-  pressure       INT,
-  humidity       INT,
-  visibility     INT,
-  wind_speed     DOUBLE PRECISION,
-  wind_deg       INT,
-  clouds_all     INT,
-  pop            DOUBLE PRECISION,  -- probability of precipitation
-);
-
-```
-
 ## Ingestion design & scheduling
 
-+ Current weather: schedule every 5 minutes to 1 day (depends on API limits and business needs).
-
-+ Forecast: schedule every 1 hour to 1 day (forecast doesn't change as frequently).
++ Current weather: schedule every 1-2 hours (depends on API limits and business needs).
 
 + Backfills: one-off DAG to backfill historical data if needed.
 
@@ -92,13 +67,9 @@ CREATE TABLE IF NOT EXISTS forecast_weather (
 
 Two DAGs or one DAG with branching:
 
-+ weather_current_dag: runs every 5–15m or 1 day; tasks:
++ weather_current_dag: runs every 1-2 hour; tasks:
 
 start --> fetch_current_task (PythonOperator calling load_current for a batch of cities) --> quality_checks_task (PythonOperator/SQLSensor) --> audit_task (log counts, store in etl_audit) --> notify_on_failure (email/Slack alert)
-
-+ weather_forecast_dag: runs hourly or daily; tasks:
-
-fetch_forecast_task (fetch & upsert forecasts) --> aggregate_materialized_views (optional) --> audit and notify
 
 ## Looker Studio connection & best practices
 

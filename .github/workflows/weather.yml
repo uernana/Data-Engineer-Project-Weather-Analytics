@@ -1,0 +1,29 @@
+name: Weather Ingestion
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # Every hour
+  workflow_dispatch:      # Allows manual run
+
+jobs:
+  run-weather-job:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests psycopg2-binary
+
+      - name: Run ingestion script
+        env:
+          OPENWEATHER_API_KEY: ${{ secrets.API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python weather_ingest.py

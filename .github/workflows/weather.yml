@@ -17,23 +17,6 @@ jobs:
       DB_PORT: ${{ secrets.DB_PORT }}
 
     steps:
-      - name: Test Supabase connection
-        run: |
-          python - <<EOF
-          import psycopg2, os, socket
-          host = os.getenv("DB_HOST")
-          ipv4 = socket.gethostbyname(host)
-          conn = psycopg2.connect(
-            host=ipv4,
-            dbname=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            port=os.getenv("DB_PORT", 5432),
-            sslmode="require"
-            )
-          print("Connected successfully!")
-          conn.close()
-          EOF
 
       - name: Checkout repo
         uses: actions/checkout@v3

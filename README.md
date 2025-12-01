@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS current_weather (
 
 ## Storage Layer
 
-+ Database: PostgreSQL hosted on Neon
++ Database: PostgreSQL hosted on Neon (https://console.neon.tech)
 
 + Tables:
 
@@ -111,6 +111,8 @@ CREATE TABLE IF NOT EXISTS current_weather (
   + Display current weather per city
 
   + Filter by date/time and city name
+
++ Link: https://lookerstudio.google.com/s/v2wb4OJ9Vbo
 
 ## Scaling & cost considerations
 

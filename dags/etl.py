@@ -22,7 +22,7 @@ CITIES = [
 def get_db_conn():
     """Connect to Neon PostgreSQL"""
     return psycopg2.connect(
-        host="ep-odd-frog-a1x7walb.ap-southeast-1.aws.neon.tech",
+        host="ep-lucky-hill-a1fqzkvf.ap-southeast-1.aws.neon.tech",
         dbname="neondb",
         user="neondb_owner",
         password="npg_uPxqG8dr5OeH",
@@ -193,8 +193,8 @@ default_args = {
 with DAG(
     dag_id="weather_current_dag_new",
     default_args=default_args,
-    schedule="0 */2 * * *",
-    start_date=datetime(2025,11,27),
+    schedule="0 * * * *",
+    start_date=datetime(2025,12,1),
     catchup=False,
     max_active_runs=1,
     tags=["weather"],

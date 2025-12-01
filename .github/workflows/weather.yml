@@ -17,8 +17,6 @@ jobs:
       DB_PORT: ${{ secrets.DB_PORT }}
 
     steps:
-      - name: Install psycopg2
-        run: pip install psycopg2
       - name: Test Supabase connection
         run: |
           python - <<EOF
@@ -43,7 +41,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.12.3"
 
       - name: Install dependencies
         run: pip install -r requirements.txt

@@ -1,17 +1,11 @@
-# dags/weather_current_dag.py
-from airflow import DAG
-from airflow.providers.standard.operators.python import PythonOperator
-
+import os
 import time
 import logging
-from datetime import datetime, timedelta
 import requests
 import psycopg2
+from datetime import datetime
 
-# ---------------------------------------------
-# CONFIG
-# ---------------------------------------------
-API_KEY = "57c2842bfac979c9a3e8b4297d85185d"  
+API_KEY = os.getenv("API_KEY")
 
 CITIES = [
     "Hanoi", "Sapa", "Ha Long", "Hai Duong",
@@ -20,19 +14,15 @@ CITIES = [
 ]
 
 def get_db_conn():
-    """Connect to Neon PostgreSQL"""
     return psycopg2.connect(
-        host="ep-lucky-hill-a1fqzkvf.ap-southeast-1.aws.neon.tech",
-        dbname="neondb",
-        user="neondb_owner",
-        password="npg_uPxqG8dr5OeH",
+        host=os.getenv("ep-lucky-hill-a1fqzkvf.ap-southeast-1.aws.neon.tech"),
+        dbname=os.getenv("neon_db"),
+        user=os.getenv("neondb_owner"),
+        password=os.getenv("npg_uPxqG8dr5OeH"),
         sslmode="require",
         options="-c search_path=public"
     )
 
-# ---------------------------------------------
-# FETCH WEATHER FROM API
-# ---------------------------------------------
 def fetch_weather_dict(city: str):
     url = "https://api.openweathermap.org/data/2.5/weather"
     params = {"q": city, "appid": API_KEY, "units": "metric", "lang": "vi"}
@@ -41,9 +31,7 @@ def fetch_weather_dict(city: str):
         r = requests.get(url, params=params, timeout=15)
         r.raise_for_status()
         data = r.json()
-
         if int(data.get("cod", 0)) != 200:
-            logging.warning("OpenWeatherMap error for %s: %s", city, data.get("message"))
             return None
 
         return {
@@ -52,7 +40,6 @@ def fetch_weather_dict(city: str):
             "weather_id": data["weather"][0]["id"],
             "weather_main": data["weather"][0]["main"],
             "description": data["weather"][0]["description"],
-            "weather_icon": data["weather"][0]["icon"],
             "base": data.get("base"),
             "temp": data["main"]["temp"],
             "feels_like": data["main"]["feels_like"],
@@ -73,14 +60,9 @@ def fetch_weather_dict(city: str):
             "city_id": data["id"],
             "city_name": data["name"],
         }
-
-    except Exception as e:
-        logging.exception("Failed fetch %s: %s", city, e)
+    except:
         return None
 
-# ---------------------------------------------
-# UPSERT CITY
-# ---------------------------------------------
 def upsert_city(cur, ev):
     sql = """
     INSERT INTO public.cities (
@@ -93,15 +75,11 @@ def upsert_city(cur, ev):
         coord_lon = EXCLUDED.coord_lon,
         timezone = EXCLUDED.timezone;
     """
-
     cur.execute(sql, (
         ev["city_id"], ev["city_name"], ev["country"],
         ev["coord_lat"], ev["coord_lon"], ev["timezone"]
     ))
 
-# ---------------------------------------------
-# UPSERT CURRENT WEATHER
-# ---------------------------------------------
 def upsert_current_weather(cur, ev):
     sql = """
     INSERT INTO public.current_weather (
@@ -135,7 +113,6 @@ def upsert_current_weather(cur, ev):
         sunrise      = EXCLUDED.sunrise,
         sunset       = EXCLUDED.sunset;
     """
-
     cur.execute(sql, (
         ev["city_id"], ev["dt"], ev["weather_id"], ev["weather_main"], ev["description"],
         ev["base"], ev["temp"], ev["feels_like"], ev["temp_min"], ev["temp_max"],
@@ -143,64 +120,24 @@ def upsert_current_weather(cur, ev):
         ev["wind_deg"], ev["wind_gust"], ev["clouds_all"], ev["sunrise"], ev["sunset"]
     ))
 
-# ---------------------------------------------
-# MAIN TASK
-# ---------------------------------------------
-def fetch_and_load_current(**ctx):
+def main():
     conn = get_db_conn()
     cur = conn.cursor()
 
-    inserted, errors = 0, 0
+    for city in CITIES:
+        ev = fetch_weather_dict(city)
+        if ev:
+            upsert_city(cur, ev)
+            upsert_current_weather(cur, ev)
+            print(f"Inserted: {city}")
+        else:
+            print(f"Failed: {city}")
 
-    try:
-        for city in CITIES:
-            ev = fetch_weather_dict(city)
-            if ev is None:
-                errors += 1
-                continue
+        time.sleep(0.4)
 
-            try:
-                upsert_city(cur, ev)
-                upsert_current_weather(cur, ev)
-                inserted += 1
-            except Exception:
-                logging.exception("DB failed for city: %s", city)
-                errors += 1
+    conn.commit()
+    cur.close()
+    conn.close()
 
-            time.sleep(0.4)  # avoid API rate limit
-
-        conn.commit()
-
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        cur.close()
-        conn.close()
-
-    logging.info("FINISHED inserted=%d errors=%d", inserted, errors)
-    return {"inserted": inserted, "errors": errors}
-
-# ---------------------------------------------
-# DAG DEFINITION
-# ---------------------------------------------
-default_args = {
-    "owner": "weather_etl",
-    "retries": 2,
-    "retry_delay": timedelta(minutes=2),
-}
-
-with DAG(
-    dag_id="weather_current_dag_new",
-    default_args=default_args,
-    schedule="0 * * * *",
-    start_date=datetime(2025,12,1),
-    catchup=False,
-    max_active_runs=1,
-    tags=["weather"],
-) as dag:
-
-    task_fetch_and_load = PythonOperator(
-        task_id="fetch_and_load_current",
-        python_callable=fetch_and_load_current,
-    )
+if __name__ == "__main__":
+    main()

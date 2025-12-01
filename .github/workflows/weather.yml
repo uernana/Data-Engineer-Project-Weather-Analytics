@@ -30,5 +30,6 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PORT: ${{ secret.DB_PORT}}
 
         run: python dags/etl.py

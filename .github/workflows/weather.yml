@@ -26,4 +26,4 @@ jobs:
         env:
           OPENWEATHER_API_KEY: ${{ secrets.API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python weather_ingest.py
+        run: python dags/etl.py

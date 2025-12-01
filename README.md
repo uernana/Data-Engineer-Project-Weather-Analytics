@@ -1,19 +1,4 @@
-## Architecture
-
-1. Data source: OpenWeatherMap (Current Weather). 
-
-2. Ingestion layer (Python): small Python microservice (requests) called by Airflow tasks.
-
-3. Storage: PostgreSQL (single database). Tables: cities, current_weather, forecast_weather, plus audit / metadata / dwh_views.
-
-4. Orchestration: Airflow DAGs schedule pulls (e.g., current weather every 1-2 hours.
-
-5. Transformations: SQL transforms in Postgres or Airflow-PostgresOperator: clean, enrich, aggregate, materialized views.
-
-6. Monitoring & QA: Airflow task-level alerts, DQ checks (nulls, ranges, schema drift), Prometheus/Statsd optional.
-
-7. Visualization: Looker Studio (connect to PostgreSQL via its PostgreSQL connector). Whitelist Looker Studio IPs or use secure tunnel.
-
+# **Weather ETL Project Summary**
 
 ## Data source
 Link data: https://openweathermap.org/api
@@ -57,44 +42,88 @@ CREATE TABLE IF NOT EXISTS current_weather (
 
 ## Ingestion design & scheduling
 
-+ Current weather: schedule every 1-2 hours (depends on API limits and business needs).
++ Language / tools: Python
 
-+ Backfills: one-off DAG to backfill historical data if needed.
++ Libraries: requests for API calls, psycopg2 for PostgreSQL connection
 
-+ Rate-limit planning: OpenWeatherMap free/paid plans have call limits and One Call API options — design schedule to stay under your quota; batch multiple cities per minute to avoid 429s.
++ ETL workflow:
 
-## Airflow DAG design (sketch)
+1. Fetch data from OpenWeatherMap API for a list of cities
 
-Two DAGs or one DAG with branching:
+2. Upsert city information into cities table
 
-+ weather_current_dag: runs every 1-2 hour; tasks:
+3. Upsert current weather into current_weather table
 
-start --> fetch_current_task (PythonOperator calling load_current for a batch of cities) --> quality_checks_task (PythonOperator/SQLSensor) --> audit_task (log counts, store in etl_audit) --> notify_on_failure (email/Slack alert)
+4. Log failures and inserted records
 
-## Looker Studio connection & best practices
+## Storage Layer
 
-+ Connector: use Looker Studio's built-in PostgreSQL connector (JDBC). In Looker Studio: Create → Data source → PostgreSQL. 
-Google Cloud Documentation
++ Database: PostgreSQL hosted on Neon
 
-+ Network: Looker Studio needs to reach your DB; if DB is in a VPC/Cloud SQL, whitelist Looker Studio IP ranges or use Cloud SQL integration. Looker Studio may require allowing inbound traffic from Google IPs — see your DB provider docs. 
-Google Developer forums
++ Tables:
 
-+ Security: prefer a read-only DB user and restrict to required tables/views; use SSL.
+1. cities – stores city metadata
 
-+ Performance:
+2. current_weather – stores latest weather readings per city
 
-    + Expose materialized views or aggregated views (e.g., mv_latest_current, mv_forecast_24h_avg) rather than huge raw tables.
++ Schema considerations:
 
-    + Limit the number of rows Looker Studio queries (set query limits or use pre-aggregated tables).
+  + cities.city_id primary key
 
-+ Connection via Neon (if using Neon): Neon docs show steps to connect to Looker Studio (get connection string, create data source)
+  + current_weather primary key on (city_id, dt) for uniqueness
+
+  + Upsert strategy ensures no duplicates
+
+## Orchestration / Scheduling
+
++ Scheduler: GitHub Actions
+
++ Frequency: Hourly (cron: "0 * * * *")
+
++ Workflow:
+
+1. Checkout repository
+
+2. Setup Python environment
+
+3. Install dependencies (requests, psycopg2-binary if needed)
+
+4. Run ETL script
+
++ Cost: Free tier (limited minutes, shared runner)
+
++ Limitations:
+
+  + Not built for heavy or complex data pipelines
+
+  + No advanced monitoring, alerting, or orchestration features
+
+  + Potential API/network issues from cloud runners
+
+## BI / Visualization Layer
+
++ Tool: Looker Studio (Google Data Studio)
+
++ Connection: PostgreSQL in Neon → Looker Studio via connector
+
++ Capabilities:
+
+  + Display current weather per city
+
+  + Filter by date/time and city name
 
 ## Scaling & cost considerations
 
-1. API cost: monitor usage; OpenWeather pricing varies by plan and endpoint (One Call vs single endpoints). Batch requests and consider One Call to reduce total calls. 
-OpenWeatherMap
-+1
++ Entire pipeline uses free services (Neon free tier + GitHub Actions free minutes + Looker Studio)
 
-2. DB growth: forecast rows per city: ~40 forecast rows per city per 5 days (3-hour steps). Partition forecast_weather by month or year for large fleets.
++ Constraints:
 
-3. Airflow workers: scale worker pool for parallel city ingestion; use rate limiting to avoid API 429s.
+  + Neon free tier limits connections and storage
+
+  + GitHub Actions free minutes limit frequency and duration of ETL
+
+  + Not suitable for high-frequency, long-term, or multi-source data pipelines
+
+## Summary Insight:
+
+This setup is excellent for learning, prototyping, and small-scale weather data collection and visualization, but for production-level workloads, you would need a more robust orchestration platform (like Airflow Cloud, Prefect, or Dagster) and a cloud database with higher throughput and IP access control.

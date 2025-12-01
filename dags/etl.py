@@ -15,13 +15,13 @@ CITIES = [
 
 def get_db_conn():
     return psycopg2.connect(
-        host=os.getenv("ep-lucky-hill-a1fqzkvf.ap-southeast-1.aws.neon.tech"),
-        dbname=os.getenv("neon_db"),
-        user=os.getenv("neondb_owner"),
-        password=os.getenv("npg_uPxqG8dr5OeH"),
-        sslmode="require",
-        options="-c search_path=public"
+        host=os.getenv("DB_HOST"),
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        sslmode="require"
     )
+
 
 def fetch_weather_dict(city: str):
     url = "https://api.openweathermap.org/data/2.5/weather"

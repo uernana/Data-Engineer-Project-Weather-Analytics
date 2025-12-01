@@ -3,7 +3,7 @@ name: Weather ETL
 on:
   schedule:
     - cron: "0 * * * *"  # every hour
-  workflow_dispatch:      # allow manual trigger
+  workflow_dispatch:
 
 jobs:
   run-etl:
@@ -16,7 +16,6 @@ jobs:
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
 
     steps:
-
       - name: Checkout repo
         uses: actions/checkout@v3
 
@@ -25,8 +24,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      #- name: Install dependencies
-       # run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests psycopg2-binary
 
       - name: Run ETL script
         run: python dags/etl.py

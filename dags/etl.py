@@ -5,7 +5,7 @@ import requests
 import psycopg2
 from datetime import datetime
 
-API_KEY = os.getenv("API_KEY")
+API_KEY = "57c2842bfac979c9a3e8b4297d85185d"
 
 CITIES = [
     "Hanoi", "Sapa", "Ha Long", "Hai Duong",

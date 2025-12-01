@@ -17,6 +17,8 @@ jobs:
       DB_PORT: ${{ secrets.DB_PORT }}
 
     steps:
+      - name: Install psycopg2
+        run: pip install psycopg2
       - name: Test Supabase connection
         run: |
           python - <<EOF

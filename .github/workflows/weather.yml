@@ -24,6 +24,6 @@ jobs:
 
       - name: Run ingestion script
         env:
-          OPENWEATHER_API_KEY: ${{ secrets.API_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python dags/etl.py
